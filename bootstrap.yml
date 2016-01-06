@@ -12,8 +12,6 @@
         env01:        "MYSQL_ROOT_PASSWORD=masterpassword"
         env02:        "MYSQL_USER=masteruser"
         env03:        "MYSQL_PASSWORD=masterpassword"
-        user:         "booktype"
-        passwd:       "booktype"
     slave:
         datavolume:     "/srv/docker-volume/mariadb/slave/data"
         configvolume:   "/srv/docker-volume/mariadb/slave/config"
