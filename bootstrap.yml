@@ -1,0 +1,98 @@
+---
+- name: "Bootstrap mariadb master slave replication with docker container"
+  hosts: "127.0.0.1"
+  connection: "local"
+  vars:
+    images:           "mariadb"
+    binlognam:        "mariadb-bin.000666"
+    master:
+        datavolume:   "/srv/docker-volume/mariadb/master/data"
+        configvolume: "/srv/docker-volume/mariadb/master/config"
+        initvolume:   "/srv/docker-volume/mariadb/master/init"
+        env01:        "MYSQL_ROOT_PASSWORD=masterpassword"
+        env02:        "MYSQL_USER=masteruser"
+        env03:        "MYSQL_PASSWORD=masterpassword"
+        user:         "booktype"
+        passwd:       "booktype"
+    slave:
+        datavolume:     "/srv/docker-volume/mariadb/slave/data"
+        configvolume:   "/srv/docker-volume/mariadb/slave/config"
+        initvolume:     "/srv/docker-volume/mariadb/slave/init"
+        env01:          "MYSQL_ROOT_PASSWORD=masterpassword"
+        env02:          "MYSQL_USER=masteruser"
+        env03:          "MYSQL_PASSWORD=masterpassword"
+        masterdomain:   "mariadb-master"
+        masteruser:     "masteruser"
+        masterpassword: "masterpassword"
+
+  tasks:
+    - name: "create a volume data directory for master and slave instance"
+      file:
+        path: "{{ item }}"
+        state: "directory"
+        mode: "0777"
+      with_items:
+        - "{{ master.datavolume }}"
+        - "{{ master.configvolume }}"
+        - "{{ master.initvolume }}"
+        - "{{ slave.datavolume }}"
+        - "{{ slave.configvolume }}"
+        - "{{ slave.initvolume }}"
+
+    - name: "Update customized-master.cnf"
+      copy:
+        src: "./files/customized-master.cnf"
+        dest: "{{ slave.configvolume }}/customized-master.cnf"
+
+    - name: "Update customized-slave.cnf"
+      copy:
+        src: "./files/customized-slave.cnf"
+        dest: "{{ slave.configvolume }}/customized-slave.cnf"
+
+    - name: "Update master-init.sql"
+      template:
+        src: "./files/master-init.sql"
+        dest: "{{ master.initvolume }}/master-init.sql"
+
+    - name: "Update master-init.sql"
+      template:
+        src: "./files/master-init.sql"
+        dest: "{{ master.initvolume }}/master-init.sql"
+
+    - name: "Update mariadb-master.service"
+      template:
+        src: "./files/mariadb-master.service"
+        dest: "/etc/systemd/system/mariadb-master.service"
+      notify:
+        - "reload systemctl daemon"
+        - "restart mariadb-master container"
+
+    - name: "Update mariadb-slave.service"
+      template:
+        src: "./files/mariadb-slave.service"
+        dest: "/etc/systemd/system/mariadb-slave.service"
+      notify:
+        - "reload systemctl daemon"
+        - "restart mariadb-slave container"
+
+    - name: "enabled master and slave service"
+      service:
+        name: "{{ item }}"
+        enabled: "yes"
+      with_items:
+        - "mariadb-master"
+        - "mariadb-slave"
+
+  handlers:
+    - name: "reload systemctl daemon"
+      shell: "systemctl daemon-reload"
+
+    - name: "restart mariadb-master container"
+      service:
+        name: "mariadb-master"
+        state: "restarted"
+
+    - name: "restart mariadb-slave container"
+      service:
+        name: "mariadb-slave"
+        state: "restarted"

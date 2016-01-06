@@ -1,0 +1,24 @@
+# Doku: https://coreos.com/docs/launching-containers/launching/getting-started-with-systemd/
+# Don't forget "systemctl daemon-reload" after changes
+
+[Unit]
+Description=A docker container with mariadb as master
+After=docker.service
+Requires=docker.service
+
+[Service]
+TimeoutStartSec=0
+ExecStartPre=-/usr/bin/docker kill mariadb-master
+ExecStartPre=-/usr/bin/docker rm mariadb-master
+ExecStartPre=/usr/bin/docker pull {{ images }}
+ExecStart=/usr/bin/docker run --name=mariadb-master \
+    -v {{ master.datavolume }}:/var/lib/mysql \
+    -v {{ master.configvolume }}:/etc/mysql/conf.d \
+    -v {{ master.initvolume }}:/docker-entrypoint-initdb.d \
+    -e {{ master.env01 }} \
+    -e {{ master.env02 }} \
+    -e {{ master.env03 }} \
+    {{ images }}
+
+[Install]
+WantedBy=multi-user.target
